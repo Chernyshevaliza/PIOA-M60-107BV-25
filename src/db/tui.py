@@ -1,4 +1,4 @@
-from .backend.memory import create_record, select_record, get_all_records
+from .backend.memory import create_record, select_record, get_all_records, update_record, delete_record
 
 
 def _print_menu() -> None:
@@ -6,6 +6,8 @@ def _print_menu() -> None:
     print("1. Добавить запись")
     print("2. Показать все записи")
     print("3. Найти записи по фильтру")
+    print("4. Обновить запись")
+    print("5. Удалить запись")
     print("0. Выход")
 
 
@@ -108,6 +110,46 @@ def _find_books_by_filter() -> None:
         print(f"Ошибка при поиске: {e}")
 
 
+def _update_book() -> None:
+    print("\n--- Обновление книги ---")
+    
+    try:
+        book_id = _read_int("ID книги для обновления: ")
+        
+        print("(оставьте поле пустым, если не хотите менять)")
+        title = _read_str("Новое название: ", allow_empty=True)
+        author = _read_str("Новый автор: ", allow_empty=True)
+        year_input = input("Новый год: ").strip()
+        year = None
+        
+        if year_input:
+            try:
+                year = int(year_input)
+            except ValueError:
+                print("Ошибка: год должен быть числом. Поле не будет обновлено.")
+        
+        title = title if title else None
+        author = author if author else None
+        
+        record = update_record(book_id, title, author, year)
+        print(f"Книга обновлена. ID: {record[0]}, Название: {record[1]}, Автор: {record[2]}, Год: {record[3]}")
+        
+    except ValueError as e:
+        print(f"Ошибка: {e}")
+
+
+def _delete_book() -> None:
+    print("\n--- Удаление книги ---")
+    
+    try:
+        book_id = _read_int("ID книги для удаления: ")
+        delete_record(book_id)
+        print(f"Книга с ID {book_id} удалена.")
+        
+    except ValueError as e:
+        print(f"Ошибка: {e}")
+
+
 def run() -> None:
     print("Запуск базы данных книг")
     
@@ -121,6 +163,10 @@ def run() -> None:
             _show_all_books()
         elif choice == "3":
             _find_books_by_filter()
+        elif choice == "4":
+            _update_book()
+        elif choice == "5":
+            _delete_book()
         elif choice == "0":
             print("До свидания!")
             break
