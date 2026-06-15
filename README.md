@@ -20,3 +20,4 @@
 ### Запуск
 ```bash
 python3 -m src.db
+```
