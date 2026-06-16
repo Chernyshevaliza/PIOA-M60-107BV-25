@@ -1,4 +1,10 @@
-from .backend.memory import create_record, select_record, get_all_records, update_record, delete_record
+from .backend.memory import (
+    create_record,
+    select_record,
+    get_all_records,
+    update_record,
+    delete_record,
+)
 
 
 def _print_menu() -> None:
@@ -106,7 +112,7 @@ def _find_books_by_filter() -> None:
             print(f"  ID: {r[0]} | {r[1]} | {r[2]} | {r[3]}")
         print("-" * 60)
         
-    except Exception as e:
+    except ValueError as e:
         print(f"Ошибка при поиске: {e}")
 
 

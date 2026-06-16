@@ -58,6 +58,8 @@ def select_record(
 
 def get_all_records() -> list[BookRecord]:
     return Books.copy()
+
+
 def update_record(
     book_id: int,
     title: Optional[str] = None,
