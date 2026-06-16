@@ -1,7 +1,10 @@
-from .tui import run
+from .tui import BookUI
+
 
 def main() -> None:
-    run()
+    ui = BookUI()
+    ui.run()
+
 
 if __name__ == "__main__":
     main()
