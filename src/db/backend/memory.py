@@ -1,4 +1,5 @@
-from .errors import DuplicateIDError, InvalidYearError
+# src/db/backend/memory.py
+from .errors import DuplicateIDError, InvalidYearError, EmptyFieldError, RecordNotFoundError
 
 type BookRecord = tuple[int, str, str, int]
 
@@ -79,9 +80,9 @@ class BookTable:
                 new_year = year if year is not None else record[3]
 
                 if not new_title:
-                    raise ValueError("Название не может быть пустым.")
+                    raise EmptyFieldError("Название не может быть пустым.")
                 if not new_author:
-                    raise ValueError("Автор не может быть пустым.")
+                    raise EmptyFieldError("Автор не может быть пустым.")
                 if new_year < 0:
                     raise InvalidYearError("Год не может быть отрицательным.")
 
@@ -89,14 +90,14 @@ class BookTable:
                 self._books[i] = updated
                 return updated
 
-        raise ValueError(f"Запись с id={book_id} не найдена.")
+        raise RecordNotFoundError(f"Запись с id={book_id} не найдена.")
 
     def delete_record(self, book_id: int) -> bool:
         for i, record in enumerate(self._books):
             if record[0] == book_id:
                 self._books.pop(i)
                 return True
-        raise ValueError(f"Запись с id={book_id} не найдена.")
+        raise RecordNotFoundError(f"Запись с id={book_id} не найдена.")
 
     def sort_records(self, key: str, reverse: bool = False) -> list[BookRecord]:
         field_map = {

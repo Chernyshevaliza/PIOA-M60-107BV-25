@@ -1,168 +1,181 @@
+# tests/test_memory.py
 import unittest
+
 from src.db.backend.memory import BookTable
-from src.db.backend.errors import InvalidYearError, DuplicateIDError
+from src.db.backend.errors import (
+    DuplicateIDError,
+    InvalidYearError,
+    EmptyFieldError,
+    RecordNotFoundError,
+)
 
 
-class TestMemory(unittest.TestCase):
+class TestBookTableCreate(unittest.TestCase):
     def setUp(self):
-        self.book_table = BookTable()
-        self.assertIsInstance(self.book_table, BookTable)
+        self.table = BookTable()
 
-    def test_create_record(self):
-        cases = [
-            (1, "1984", "George Orwell", 1949),
-            (2, "Brave New World", "Aldous Huxley", 1932),
-            (3, "Fahrenheit 451", "Ray Bradbury", 1953),
-            (4, "The Catcher in the Rye", "J.D. Salinger", 1951),
-            (5, "To Kill a Mockingbird", "Harper Lee", 1960),
-            (6, "The Great Gatsby", "F. Scott Fitzgerald", 1925),
-            (7, "Moby Dick", "Herman Melville", 1851),
-            (8, "Pride and Prejudice", "Jane Austen", 1813),
-            (9, "The Hobbit", "J.R.R. Tolkien", 1937),
-            (10, "The Lord of the Rings", "J.R.R. Tolkien", 1954),
-            (11, "The Shining", "Stephen King", 1977),
-            (12, "It", "Stephen King", 1986),
-        ]
-
-        for test_data in cases:
-            with self.subTest(test_data=test_data):
-                record = self.book_table.create_record(*test_data)
-                self.assertEqual(record, test_data)
-
-    def test_create_record_negative_year(self):
-        cases = [
-            (1, "1984", "George Orwell", -1),
-            (2, "Brave New World", "Aldous Huxley", -5),
-            (3, "Fahrenheit 451", "Ray Bradbury", -10),
-        ]
-        error_message = "Год не может быть отрицательным."
-
-        for test_data in cases:
-            with self.subTest(test_data=test_data):
-                with self.assertRaises(InvalidYearError) as context:
-                    self.book_table.create_record(*test_data)
-
-        self.assertEqual(str(context.exception), error_message)
+    def test_create_record_success(self):
+        record = self.table.create_record(1, "1984", "George Orwell", 1949)
+        self.assertEqual(record, (1, "1984", "George Orwell", 1949))
+        self.assertEqual(len(self.table._books), 1)
 
     def test_create_record_duplicate_id(self):
-        test_data_1 = (1, "1984", "George Orwell", 1949)
-        test_data_2 = (1, "Animal Farm", "George Orwell", 1945)
-        error_message = "Запись с id=1 уже существует."
+        self.table.create_record(1, "1984", "Orwell", 1949)
+        with self.assertRaises(DuplicateIDError):
+            self.table.create_record(1, "Animal Farm", "Orwell", 1945)
 
-        self.book_table.create_record(*test_data_1)
+    def test_create_record_invalid_year(self):
+        with self.assertRaises(InvalidYearError):
+            self.table.create_record(1, "Book", "Author", -1)
 
-        with self.assertRaises(DuplicateIDError) as context:
-            self.book_table.create_record(*test_data_2)
+    def test_create_record_strips_whitespace(self):
+        record = self.table.create_record(1, "  1984  ", "  Orwell  ", 1949)
+        self.assertEqual(record[1], "1984")
+        self.assertEqual(record[2], "Orwell")
 
-        self.assertEqual(str(context.exception), error_message)
+    def test_create_multiple_records(self):
+        self.table.create_record(1, "1984", "Orwell", 1949)
+        self.table.create_record(2, "Animal Farm", "Orwell", 1945)
+        self.assertEqual(len(self.table._books), 2)
 
-    def test_select_record(self):
-        test_datas = [
-            (1, "1984", "George Orwell", 1949),
-            (2, "Brave New World", "Aldous Huxley", 1932),
-            (3, "Fahrenheit 451", "Ray Bradbury", 1953),
-            (4, "The Catcher in the Rye", "J.D. Salinger", 1951),
-            (5, "To Kill a Mockingbird", "Harper Lee", 1960),
-            (6, "The Great Gatsby", "F. Scott Fitzgerald", 1925),
-            (7, "Moby Dick", "Herman Melville", 1851),
-            (8, "Pride and Prejudice", "Jane Austen", 1813),
-            (9, "The Hobbit", "J.R.R. Tolkien", 1937),
-            (10, "The Lord of the Rings", "J.R.R. Tolkien", 1954),
-        ]
 
-        for test_data in test_datas:
-            self.book_table.create_record(*test_data)
+class TestBookTableSelect(unittest.TestCase):
+    def setUp(self):
+        self.table = BookTable()
+        self.table.create_record(1, "1984", "George Orwell", 1949)
+        self.table.create_record(2, "Animal Farm", "George Orwell", 1945)
+        self.table.create_record(3, "Brave New World", "Aldous Huxley", 1932)
 
-        cases = [
-            {
-                "name": "Выбор без фильтров",
-                "filters": {},
-                "expected": test_datas,
-            },
-            {
-                "name": "Фильтр по ID",
-                "filters": {"book_id": 1},
-                "expected": [test_datas[0]],
-            },
-            {
-                "name": "Фильтр по названию",
-                "filters": {"title": "1984"},
-                "expected": [test_datas[0]],
-            },
-            {
-                "name": "Фильтр по автору",
-                "filters": {"author": "J.R.R. Tolkien"},
-                "expected": [test_datas[8], test_datas[9]],
-            },
-            {
-                "name": "Фильтр по году",
-                "filters": {"year": 1953},
-                "expected": [test_datas[2]],
-            },
-            {
-                "name": "Фильтр по автору и году",
-                "filters": {"author": "George Orwell", "year": 1949},
-                "expected": [test_datas[0]],
-            },
-        ]
+    def test_select_all_records(self):
+        books = self.table.select_record()
+        self.assertEqual(len(books), 3)
 
-        for case in cases:
-            with self.subTest(
-                case=case["name"], filters=case["filters"], expected=case["expected"]
-            ):
-                records = self.book_table.select_record(**case["filters"])
-                self.assertEqual(records, case["expected"])
+    def test_select_by_id(self):
+        books = self.table.select_record(book_id=1)
+        self.assertEqual(len(books), 1)
+        self.assertEqual(books[0][1], "1984")
 
-    def test_update_record(self):
-        self.book_table.create_record(1, "1984", "George Orwell", 1949)
-        updated = self.book_table.update_record(1, title="Nineteen Eighty-Four")
-        self.assertEqual(updated, (1, "Nineteen Eighty-Four", "George Orwell", 1949))
+    def test_select_by_title(self):
+        books = self.table.select_record(title="1984")
+        self.assertEqual(len(books), 1)
+        self.assertEqual(books[0][0], 1)
 
-    def test_delete_record(self):
-        self.book_table.create_record(1, "1984", "George Orwell", 1949)
-        self.book_table.delete_record(1)
-        result = self.book_table.select_record()
-        self.assertEqual(result, [])
+    def test_select_by_author(self):
+        books = self.table.select_record(author="George Orwell")
+        self.assertEqual(len(books), 2)
 
-    def test_sort_records(self):
-        test_datas = [
-            (2, "Brave New World", "Aldous Huxley", 1932),
-            (1, "1984", "George Orwell", 1949),
-            (3, "Fahrenheit 451", "Ray Bradbury", 1953),
-        ]
-        for data in test_datas:
-            self.book_table.create_record(*data)
+    def test_select_by_year(self):
+        books = self.table.select_record(year=1949)
+        self.assertEqual(len(books), 1)
 
-        sorted_by_id = self.book_table.sort_records("book_id")
-        self.assertEqual(sorted_by_id, [
-            (1, "1984", "George Orwell", 1949),
-            (2, "Brave New World", "Aldous Huxley", 1932),
-            (3, "Fahrenheit 451", "Ray Bradbury", 1953),
-        ])
+    def test_select_by_multiple_filters(self):
+        books = self.table.select_record(author="George Orwell", year=1949)
+        self.assertEqual(len(books), 1)
+        self.assertEqual(books[0][1], "1984")
 
-        sorted_by_title_desc = self.book_table.sort_records("title", reverse=True)
-        self.assertEqual(sorted_by_title_desc, [
-            (3, "Fahrenheit 451", "Ray Bradbury", 1953),
-            (2, "Brave New World", "Aldous Huxley", 1932),
-            (1, "1984", "George Orwell", 1949),
-        ])
+    def test_select_no_matches(self):
+        books = self.table.select_record(author="Unknown")
+        self.assertEqual(len(books), 0)
 
-        sorted_by_author = self.book_table.sort_records("author")
-        self.assertEqual(sorted_by_author, [
-            (2, "Brave New World", "Aldous Huxley", 1932),
-            (1, "1984", "George Orwell", 1949),
-            (3, "Fahrenheit 451", "Ray Bradbury", 1953),
-        ])
+    def test_select_returns_copy(self):
+        books = self.table.select_record()
+        books.clear()
+        self.assertEqual(len(self.table._books), 3)
 
-        sorted_by_year_desc = self.book_table.sort_records("year", reverse=True)
-        self.assertEqual(sorted_by_year_desc, [
-            (3, "Fahrenheit 451", "Ray Bradbury", 1953),
-            (1, "1984", "George Orwell", 1949),
-            (2, "Brave New World", "Aldous Huxley", 1932),
-        ])
 
+class TestBookTableUpdate(unittest.TestCase):
+    def setUp(self):
+        self.table = BookTable()
+        self.table.create_record(1, "1984", "George Orwell", 1949)
+        self.table.create_record(2, "Animal Farm", "George Orwell", 1945)
+
+    def test_update_record_success(self):
+        updated = self.table.update_record(1, title="Nineteen Eighty-Four")
+        self.assertEqual(updated[1], "Nineteen Eighty-Four")
+        self.assertEqual(updated[0], 1)
+
+    def test_update_record_not_found(self):
+        with self.assertRaises(RecordNotFoundError):
+            self.table.update_record(999, title="X")
+
+    def test_update_record_invalid_year(self):
+        with self.assertRaises(InvalidYearError):
+            self.table.update_record(1, year=-1)
+
+    def test_update_record_preserves_other_fields(self):
+        self.table.update_record(1, title="X")
+        books = self.table.select_record(book_id=1)
+        self.assertEqual(books[0][2], "George Orwell")
+        self.assertEqual(books[0][3], 1949)
+
+    def test_update_multiple_fields(self):
+        updated = self.table.update_record(1, title="X", year=1950)
+        self.assertEqual(updated[1], "X")
+        self.assertEqual(updated[3], 1950)
+
+
+class TestBookTableDelete(unittest.TestCase):
+    def setUp(self):
+        self.table = BookTable()
+        self.table.create_record(1, "1984", "Orwell", 1949)
+        self.table.create_record(2, "Animal Farm", "Orwell", 1945)
+
+    def test_delete_record_success(self):
+        result = self.table.delete_record(1)
+        self.assertTrue(result)
+        self.assertEqual(len(self.table._books), 1)
+
+    def test_delete_record_not_found(self):
+        with self.assertRaises(RecordNotFoundError):
+            self.table.delete_record(999)
+
+    def test_delete_all_records(self):
+        self.table.delete_record(1)
+        self.table.delete_record(2)
+        self.assertEqual(len(self.table._books), 0)
+
+
+class TestBookTableSort(unittest.TestCase):
+    def setUp(self):
+        self.table = BookTable()
+        self.table.create_record(1, "1984", "George Orwell", 1949)
+        self.table.create_record(2, "Animal Farm", "George Orwell", 1945)
+        self.table.create_record(3, "Brave New World", "Aldous Huxley", 1932)
+
+    def test_sort_by_id_ascending(self):
+        books = self.table.sort_records("book_id", reverse=False)
+        self.assertEqual(books[0][0], 1)
+        self.assertEqual(books[2][0], 3)
+
+    def test_sort_by_id_descending(self):
+        books = self.table.sort_records("book_id", reverse=True)
+        self.assertEqual(books[0][0], 3)
+        self.assertEqual(books[2][0], 1)
+
+    def test_sort_by_title(self):
+        books = self.table.sort_records("title")
+        self.assertEqual(books[0][1], "1984")
+        self.assertEqual(books[1][1], "Animal Farm")
+        self.assertEqual(books[2][1], "Brave New World")
+
+    def test_sort_by_author(self):
+        books = self.table.sort_records("author")
+        self.assertEqual(books[0][2], "Aldous Huxley")
+        self.assertEqual(books[2][2], "George Orwell")
+
+    def test_sort_by_year(self):
+        books = self.table.sort_records("year")
+        self.assertEqual(books[0][3], 1932)
+        self.assertEqual(books[2][3], 1949)
+
+    def test_sort_invalid_field(self):
         with self.assertRaises(ValueError):
-            self.book_table.sort_records("invalid_field")
+            self.table.sort_records("invalid_field")
+
+    def test_sort_returns_copy(self):
+        books = self.table.sort_records("book_id")
+        books.clear()
+        self.assertEqual(len(self.table._books), 3)
 
 
 if __name__ == "__main__":

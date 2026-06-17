@@ -1,0 +1,9 @@
+{
+  "columns": [
+    "book_id",
+    "title",
+    "author",
+    "year"
+  ],
+  "records": []
+}
