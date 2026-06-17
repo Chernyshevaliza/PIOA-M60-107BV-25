@@ -1,3 +1,4 @@
+# src/db/__main__.py
 from .tui import BookUI
 
 

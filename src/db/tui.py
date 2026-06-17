@@ -1,8 +1,8 @@
+# src/db/tui.py
 from .backend.file import FileDatabase
 from .backend.memory import MemoryDatabase
 from .backend.csv_file import CsvDatabase
 from .backend.errors import (
-    DatabaseError,
     TableAlreadyExistsError,
     TableNotFoundError,
     MissingColumnError,
@@ -31,7 +31,6 @@ class BookUI:
         self._ensure_books_table()
 
     def _ensure_books_table(self) -> None:
-        """Создаёт таблицу books, если её ещё нет."""
         try:
             self.database.create_table(
                 "books",
@@ -45,6 +44,9 @@ class BookUI:
         print("1. Добавить запись")
         print("2. Показать все записи")
         print("3. Найти записи по фильтру")
+        print("4. Обновить запись")
+        print("5. Удалить запись")
+        print("6. Создать индекс")
         print("0. Выход")
 
     def _read_int(self, prompt: str) -> int:
@@ -138,6 +140,73 @@ class BookUI:
         except (UnknownColumnError, TableNotFoundError) as e:
             print(f"Ошибка: {e}")
 
+    def _update_book(self) -> None:
+        print("\n--- Обновление записи ---")
+        try:
+            book_id = self._read_int("ID книги для обновления: ")
+            print("Оставьте поле пустым, если не хотите менять значение.")
+
+            title = input("Новое название: ").strip()
+            author = input("Новый автор: ").strip()
+            year = input("Новый год: ").strip()
+
+            updates = {}
+            if title:
+                updates["title"] = title
+            if author:
+                updates["author"] = author
+            if year:
+                try:
+                    updates["year"] = int(year)
+                except ValueError:
+                    print("Год пропущен (не число)")
+
+            if not updates:
+                print("Нет полей для обновления.")
+                return
+
+            if self.database.update_record("books", "book_id", book_id, updates):
+                print("Запись успешно обновлена.")
+            else:
+                print("Запись с таким ID не найдена.")
+        except (UnknownColumnError, TableNotFoundError) as e:
+            print(f"Ошибка: {e}")
+
+    def _delete_book(self) -> None:
+        print("\n--- Удаление записи ---")
+        try:
+            book_id = self._read_int("ID книги для удаления: ")
+            if self.database.delete_record("books", "book_id", book_id):
+                print("Запись успешно удалена.")
+            else:
+                print("Запись с таким ID не найдена.")
+        except (UnknownColumnError, TableNotFoundError) as e:
+            print(f"Ошибка: {e}")
+
+    def _create_index(self) -> None:
+        print("\n--- Создание индекса ---")
+        print("Доступные поля для индексации:")
+        print("  1. book_id")
+        print("  2. title")
+        print("  3. author")
+        print("  4. year")
+        
+        try:
+            choice = input("Выберите поле (1-4): ").strip()
+            fields = {"1": "book_id", "2": "title", "3": "author", "4": "year"}
+            
+            if choice not in fields:
+                print("Неверный выбор.")
+                return
+            
+            field = fields[choice]
+            self.database.create_index("books", field)
+            print(f"Индекс по полю '{field}' успешно создан.")
+        except UnknownColumnError as e:
+            print(f"Ошибка: {e}")
+        except TableNotFoundError as e:
+            print(f"Ошибка: {e}")
+
     def run(self) -> None:
         while True:
             self._print_menu()
@@ -149,6 +218,12 @@ class BookUI:
                 self._show_all_books()
             elif choice == "3":
                 self._find_books_by_filter()
+            elif choice == "4":
+                self._update_book()
+            elif choice == "5":
+                self._delete_book()
+            elif choice == "6":
+                self._create_index()
             elif choice == "0":
                 print("До свидания!")
                 break

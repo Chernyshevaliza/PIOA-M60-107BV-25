@@ -1,3 +1,4 @@
+# src/db/backend/database.py
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -24,6 +25,25 @@ class Database(ABC):
     def select_records(self, table_name: str, **filters: Any) -> list[dict[str, Any]]:
         table = self._load_table(table_name)
         return table.select_records(**filters)
+
+    def update_record(self, table_name: str, key_field: str, key_value: Any, updates: dict[str, Any]) -> bool:
+        table = self._load_table(table_name)
+        updated = table.update_record(key_field, key_value, updates)
+        if updated:
+            self._save_table(table_name, table)
+        return updated
+
+    def delete_record(self, table_name: str, key_field: str, key_value: Any) -> bool:
+        table = self._load_table(table_name)
+        deleted = table.delete_record(key_field, key_value)
+        if deleted:
+            self._save_table(table_name, table)
+        return deleted
+
+    def create_index(self, table_name: str, field: str) -> None:
+        table = self._load_table(table_name)
+        table.create_index(field)
+        self._save_table(table_name, table)
 
     @abstractmethod
     def _table_exists(self, table_name: str) -> bool:

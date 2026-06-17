@@ -1,3 +1,4 @@
+# src/db/backend/errors.py
 class DatabaseError(Exception):
     """Базовый класс для ошибок базы данных."""
 
