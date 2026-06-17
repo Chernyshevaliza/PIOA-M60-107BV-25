@@ -13,6 +13,8 @@
 - `tests/test_memory.py` — тесты для in-memory БД
 - `tests/test_file_database.py` — тесты для JSON БД
 - `tests/test_csv_database.py` — тесты для CSV БД
+- `tests/test_table.py`
+- `tests/test_tui.py`
 - `data/` — папка для JSON-файлов
 - `data_csv/` — папка для CSV-файлов
 
