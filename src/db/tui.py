@@ -1,5 +1,6 @@
 from .backend.file import FileDatabase
 from .backend.memory import MemoryDatabase
+from .backend.csv_file import CsvDatabase
 from .backend.errors import (
     DatabaseError,
     TableAlreadyExistsError,
@@ -13,12 +14,16 @@ class BookUI:
     def __init__(self) -> None:
         print("\n=== Выбор типа базы данных ===")
         print("1. In-memory (данные в оперативной памяти)")
-        print("2. File database (данные сохраняются в JSON-файлы)")
+        print("2. File database (JSON)")
+        print("3. File database (CSV)")
 
         choice = input("Введите номер: ").strip()
         if choice == "2":
             self.database = FileDatabase()
-            print("Используется файловая база данных (папка 'data/')")
+            print("Используется файловая база данных (JSON, папка 'data/')")
+        elif choice == "3":
+            self.database = CsvDatabase()
+            print("Используется файловая база данных (CSV, папка 'data_csv/')")
         else:
             self.database = MemoryDatabase()
             print("Используется in-memory база данных")
