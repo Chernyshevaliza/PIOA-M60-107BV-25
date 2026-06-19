@@ -102,20 +102,27 @@ class Table:
 
         for i, record in enumerate(self.records):
             if record.get(key_field) == key_value:
+                old_values = {}
                 for field in self._indexes:
-                    if field in updates and field != key_field:
-                        old_value = record[field]
-                        self._indexes[field][old_value].discard(i)
+                    if field in updates or field == key_field:
+                        old_values[field] = record[field]
 
                 for key, value in updates.items():
                     record[key] = value
 
-                for field in self._indexes:
-                    if field in updates and field != key_field:
+                for field, index in self._indexes.items():
+                    if field in old_values:
+                        old_value = old_values[field]
                         new_value = record[field]
-                        if new_value not in self._indexes[field]:
-                            self._indexes[field][new_value] = set()
-                        self._indexes[field][new_value].add(i)
+                        
+                        if old_value != new_value:
+                            index[old_value].discard(i)
+                            if not index[old_value]:
+                                del index[old_value]
+                            
+                            if new_value not in index:
+                                index[new_value] = set()
+                            index[new_value].add(i)
 
                 return True
         return False

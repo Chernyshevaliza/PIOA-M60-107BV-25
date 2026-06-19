@@ -61,6 +61,7 @@ class FileDatabase(Database):
         return {
             "columns": list(table.columns),
             "records": [record.copy() for record in table.records],
+            "indexes": list(table._indexes.keys()) if hasattr(table, '_indexes') else []
         }
 
     def _deserialize_table(self, data: dict) -> Table:
@@ -88,4 +89,11 @@ class FileDatabase(Database):
                     f"Запись {i} должна быть словарём."
                 )
 
-        return Table(columns, records)
+        table = Table(columns, records)
+        
+        if "indexes" in data and isinstance(data["indexes"], list):
+            for field in data["indexes"]:
+                if field in columns:
+                    table.create_index(field)
+
+        return table
