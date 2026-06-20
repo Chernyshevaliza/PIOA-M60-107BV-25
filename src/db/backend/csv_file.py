@@ -1,5 +1,6 @@
 # src/db/backend/csv_file.py
 import csv
+import json
 from pathlib import Path
 
 from .database import Database
@@ -49,7 +50,18 @@ class CsvDatabase(Database):
                         record[col] = value
                     records.append(record)
 
-                return Table(columns, records)
+                table = Table(columns, records)
+                
+                metadata_path = self._get_metadata_path(table_name)
+                if metadata_path.exists():
+                    with metadata_path.open("r", encoding="utf-8") as meta_file:
+                        metadata = json.load(meta_file)
+                        if "indexes" in metadata and isinstance(metadata["indexes"], list):
+                            for field in metadata["indexes"]:
+                                if field in columns:
+                                    table.create_index(field)
+
+                return table
         except (csv.Error, ValueError) as error:
             raise InvalidStorageDataError(
                 "Ошибка при чтении CSV-файла."
@@ -69,6 +81,13 @@ class CsvDatabase(Database):
                 for record in table.records:
                     row = [str(record.get(col, "")) for col in table.columns]
                     writer.writerow(row)
+            
+            metadata_path = self._get_metadata_path(table_name)
+            metadata = {
+                "indexes": table.get_index_fields()
+            }
+            with metadata_path.open("w", encoding="utf-8") as meta_file:
+                json.dump(metadata, meta_file, ensure_ascii=False, indent=2)
         except OSError as error:
             raise InvalidStorageDataError(
                 f"Ошибка записи файла таблицы '{table_name}'."
@@ -76,3 +95,20 @@ class CsvDatabase(Database):
 
     def _get_table_path(self, table_name: str) -> Path:
         return self.directory / f"{table_name}.csv"
+
+    def _get_metadata_path(self, table_name: str) -> Path:
+        return self.directory / f"{table_name}.meta.json"
+
+    def update_record(self, table_name: str, key_field: str, key_value: any, updates: dict[str, any]) -> bool:
+        table = self._load_table(table_name)
+        updated = table.update_record(key_field, key_value, updates)
+        if updated:
+            self._save_table(table_name, table)
+        return updated
+
+    def delete_record(self, table_name: str, key_field: str, key_value: any) -> bool:
+        table = self._load_table(table_name)
+        deleted = table.delete_record(key_field, key_value)
+        if deleted:
+            self._save_table(table_name, table)
+        return deleted

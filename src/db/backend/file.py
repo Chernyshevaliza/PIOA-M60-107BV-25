@@ -61,7 +61,7 @@ class FileDatabase(Database):
         return {
             "columns": list(table.columns),
             "records": [record.copy() for record in table.records],
-            "indexes": list(table._indexes.keys()) if hasattr(table, '_indexes') else []
+            "indexes": table.get_index_fields()
         }
 
     def _deserialize_table(self, data: dict) -> Table:

@@ -22,7 +22,7 @@ class Table:
                 f"Поле '{field}' не определено в структуре таблицы."
             )
         if field in self._indexes:
-            return
+            return  # Индекс уже существует, ничего не делаем
         index: dict[Any, set[int]] = {}
         for i, record in enumerate(self.records):
             value = record[field]
@@ -33,6 +33,10 @@ class Table:
 
     def has_index(self, field: str) -> bool:
         return field in self._indexes
+
+    def get_index_fields(self) -> list[str]:
+        """Возвращает список полей, по которым созданы индексы."""
+        return list(self._indexes.keys())
 
     def insert_record(self, record: dict[str, Any]) -> None:
         missing_columns = [column for column in self.columns if column not in record]
